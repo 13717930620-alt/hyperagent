@@ -1,5 +1,5 @@
 {
-  "name": "hyperagent",
+  "name": "jingxuanagent",
   "version": "5.2.0",
   "description": "HyperAgent - Host Device Control Framework (承载体控制系统)",
   "main": "HyperAgent_Main.js",

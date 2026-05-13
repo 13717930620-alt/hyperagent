@@ -1,4 +1,4 @@
-# HyperAgent — Open-Source AI Agent Framework
+# JingxuanAgent — Open-Source AI Agent Framework
 
 > **I am a Chinese lawyer who loves AI. I don't know how to code.**
 >
@@ -11,11 +11,11 @@
 
 ## What Is This?
 
-HyperAgent is an open-source framework that gives your computer its own AI agent. Tell it what you want, and it makes it happen.
+JingxuanAgent is an open-source framework that gives your computer its own AI agent. Tell it what you want, and it makes it happen.
 
 ```
 You say: "Organize my desktop files by type into folders"
-→ HyperAgent: Scans desktop → Identifies file types → Creates folders → Moves files → Reports results
+→ JingxuanAgent: Scans desktop → Identifies file types → Creates folders → Moves files → Reports results
 ```
 
 It works with DeepSeek, GLM, Qwen, MiniMax, or entirely offline using its built-in engine.
@@ -27,7 +27,7 @@ It works with DeepSeek, GLM, Qwen, MiniMax, or entirely offline using its built-
 ```bash
 npm install
 cp .env.example .env     # Optional — built-in model works without it
-node HyperAgent_Main.js
+node JingxuanAgent_Main.js
 ```
 
 Then just talk to it: "Check my CPU usage" or "Create a file called test.txt"
@@ -56,16 +56,16 @@ Then just talk to it: "Check my CPU usage" or "Create a file called test.txt"
 ## Project Structure
 
 ```
-HyperAgent/
-├── HyperAgent_Main.js          # Entry point
-├── HyperAgent_Config.js        # Configuration
-├── HyperAgent_Learning.js      # Self-learning system
-├── HyperAgent_Core/            # Core system
+JingxuanAgent/
+├── JingxuanAgent_Main.js          # Entry point
+├── JingxuanAgent_Config.js        # Configuration
+├── JingxuanAgent_Learning.js      # Self-learning system
+├── JingxuanAgent_Core/            # Core system
 │   ├── cc_mode/                # Query engine + tool system
 │   ├── cognitive_core/         # Cognitive framework (reasoning/evolution/patterns)
 │   ├── llm_adapter/            # 5 LLM adapters
 │   └── infra/                  # Infrastructure (logging/storage/security)
-├── HyperAgent_Implementation/  # Implementation layer
+├── JingxuanAgent_Implementation/  # Implementation layer
 │   ├── conversation/           # Conversation engine
 │   ├── orchestrator/           # Task orchestration + checkpoints
 │   ├── atomic_executor/        # Tool executor + code tools
