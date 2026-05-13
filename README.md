@@ -4,8 +4,8 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/13717930620-alt/JX-Agent/pulls)
-[![GitHub stars](https://img.shields.io/github/stars/13717930620-alt/JX-Agent?style=social)](https://github.com/13717930620-alt/JX-Agent)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/JX-Agent/JX-Agent/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/JX-Agent/JX-Agent?style=social)](https://github.com/JX-Agent/JX-Agent)
 
 </div>
 
@@ -201,7 +201,7 @@ This is not a finished product. This is a **framework** — a skeleton — that 
 
 ## Version
 
-**Current release: v5.2.0** — This is an early-stage skeleton. The architecture is foundational and every component is open for rethinking. See the [Releases page](https://github.com/13717930620-alt/JX-Agent/releases) for changelog.
+**Current release: v5.2.0** — This is an early-stage skeleton. The architecture is foundational and every component is open for rethinking. See the [Releases page](https://github.com/JX-Agent/JX-Agent/releases) for changelog.
 
 ---
 
