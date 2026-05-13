@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JingxuanAgent - Open-Source AI Agent Framework</title>
+  <style>
+    :root { --bg: #0d1117; --fg: #c9d1d9; --accent: #58a6ff; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #f0f6fc; }
+    h2 { font-size: 1.5rem; margin: 2rem 0 1rem; color: #f0f6fc; }
+    .subtitle { font-size: 1.2rem; color: #8b949e; margin-bottom: 2rem; }
+    .quote { border-left: 4px solid #30363d; padding: 1rem 1.5rem; margin: 1.5rem 0; background: #161b22; border-radius: 6px; }
+    .quote p { margin-bottom: 0.5rem; }
+    .quote cite { color: #8b949e; font-style: normal; }
+    .btn { display: inline-block; padding: 0.75rem 1.5rem; margin: 0.5rem; border-radius: 6px; text-decoration: none; font-weight: 600; }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-outline { border: 1px solid #30363d; color: #c9d1d9; }
+    .btn-outline:hover { background: #161b22; }
+    .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .feature { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; }
+    .feature h3 { color: #f0f6fc; margin-bottom: 0.5rem; font-size: 1rem; }
+    .feature p { font-size: 0.9rem; color: #8b949e; }
+    code { background: #161b22; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; }
+    footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #21262d; color: #8b949e; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>JingxuanAgent</h1>
+    <p class="subtitle">Open-Source AI Agent Framework — Your Computer's Own AI Brain</p>
+
+    <div class="quote">
+      <p><strong>I am a Chinese lawyer who loves AI. I don't know how to code.</strong></p>
+      <p>I used publicly available AI coding assistants to translate my vision of what a true intelligent agent should be into a working framework.</p>
+      <p>This is a skeleton — a foundation. I am opening it up so that everyone who shares this vision can come together and make it real.</p>
+      <p><cite>— A Chinese lawyer who cannot code built the skeleton. Now the world can breathe life into it.</cite></p>
+    </div>
+
+    <div style="text-align:center; margin: 2rem 0;">
+      <a class="btn btn-primary" href="https://github.com/13717930620-alt/jingxuanagent">View on GitHub</a>
+      <a class="btn btn-outline" href="USAGE.md">Documentation</a>
+      <a class="btn btn-outline" href="INSTALL.md">Install Guide</a>
+    </div>
+
+    <h2>What Is JingxuanAgent?</h2>
+    <p>JingxuanAgent is an open-source framework that gives your computer its own AI agent. Tell it what you want, and it makes it happen.</p>
+    <pre style="background:#161b22; padding:1rem; border-radius:6px; margin:1rem 0; overflow-x:auto;"><code>You say: "Organize my desktop files by type into folders"
+→ JingxuanAgent: Scans desktop → Identifies file types → Creates folders → Moves files → Reports results</code></pre>
+
+    <h2>Core Capabilities</h2>
+    <div class="features">
+      <div class="feature"><h3>File Operations</h3><p>Read, write, edit, search, copy, move, delete</p></div>
+      <div class="feature"><h3>Command Execution</h3><p>cmd / PowerShell with safety restrictions</p></div>
+      <div class="feature"><h3>System Control</h3><p>Process manager, clipboard, notifications, power management</p></div>
+      <div class="feature"><h3>Browser Automation</h3><p>Puppeteer-powered browsing</p></div>
+      <div class="feature"><h3>Desktop GUI</h3><p>Mouse, keyboard, screenshot</p></div>
+      <div class="feature"><h3>Code Tools</h3><p>Diff/Apply patches, AST analysis, LSP intelligence</p></div>
+      <div class="feature"><h3>Memory System</h3><p>4-layer memory (L0→L1→L2→L3) + semantic search</p></div>
+      <div class="feature"><h3>Self-Learning</h3><p>Continuously learns user habits and system patterns</p></div>
+      <div class="feature"><h3>Multi-LLM</h3><p>DeepSeek, GLM, Qwen, MiniMax, or built-in offline engine</p></div>
+    </div>
+
+    <h2>Quick Start</h2>
+    <pre style="background:#161b22; padding:1rem; border-radius:6px; margin:1rem 0; overflow-x:auto;"><code>npm install
+cp .env.example .env     # Optional — built-in model works without it
+node JingxuanAgent_Main.js</code></pre>
+
+    <footer>
+      <p>MIT License — Free for everyone, forever.</p>
+    </footer>
+  </div>
+</body>
+</html>
