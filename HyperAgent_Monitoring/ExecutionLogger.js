@@ -194,7 +194,7 @@ class ExecutionLogger {
         
         try {
             fs.renameSync(this.currentFile, rotated);
-        } catch (e) {}
+        } catch (e) { console.warn(`[HyperAgent_Monitoring] Unhandled error: ${e.message}`); }
         
         this.currentFile = null;
         this.currentFileSize = 0;
@@ -215,7 +215,7 @@ class ExecutionLogger {
                     fs.unlinkSync(path.join(this.outputDir, f));
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[HyperAgent_Monitoring] Unhandled error: ${e.message}`); }
     }
 
     _console(level, entry) {

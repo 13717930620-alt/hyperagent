@@ -367,7 +367,7 @@ class CarrierProfile {
                         arch: os.arch(),
                         uptime: os.uptime()
                     };
-                } catch (e) {}
+                } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
             }
         }
 

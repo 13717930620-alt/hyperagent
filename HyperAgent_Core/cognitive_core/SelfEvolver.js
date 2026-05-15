@@ -79,15 +79,15 @@ class SelfEvolver {
 
         // 启动定时进化
         this._timers.minor = setInterval(() => {
-            this.tryEvolve('minor', { trigger: 'timer' }).catch(() => {});
+            this.tryEvolve('minor', { trigger: 'timer' }).catch(e => console.warn(`[cognitive_core] Caught: ${e.message}`));
         }, this.intervals.minor);
 
         this._timers.major = setInterval(() => {
-            this.tryEvolve('major', { trigger: 'timer' }).catch(() => {});
+            this.tryEvolve('major', { trigger: 'timer' }).catch(e => console.warn(`[cognitive_core] Caught: ${e.message}`));
         }, this.intervals.major);
 
         this._timers.full = setInterval(() => {
-            this.tryEvolve('full', { trigger: 'timer' }).catch(() => {});
+            this.tryEvolve('full', { trigger: 'timer' }).catch(e => console.warn(`[cognitive_core] Caught: ${e.message}`));
         }, this.intervals.full);
 
         if (this.debug) {
@@ -212,8 +212,40 @@ class SelfEvolver {
     async _microEvolution(result) {
         result.actions.push('update_experience_stats');
 
-        // 更新 self-assessor 的实时统计
-        // 这只是轻量操作，几乎无开销
+        // 统计最近经验的成功/失败比
+        const db = this.engines.experienceDB;
+        if (db) {
+            const recent = db.getRecent(50);
+            const successCount = recent.filter(e =>
+                e.outcome?.success === true || e.data?.success === true
+            ).length;
+            const failCount = recent.filter(e =>
+                e.outcome?.success === false || e.data?.success === false
+            ).length;
+            const totalOps = successCount + failCount;
+            if (totalOps > 0) {
+                const successRate = successCount / totalOps;
+                result.actions.push(`success_rate=${(successRate * 100).toFixed(0)}%`);
+
+                // 如果成功率低于40%，触发预警
+                if (successRate < 0.4) {
+                    result.actions.push('low_success_rate_warning');
+                }
+            }
+        }
+
+        this._state.experiencesSinceLastEvolve++;
+
+        // 记录进化趋势
+        this.stats.evolutionTrend.push({
+            time: new Date().toISOString(),
+            level: 'micro',
+            totalEvolutions: this.stats.totalEvolutions,
+            experiencesSinceLastEvolve: this._state.experiencesSinceLastEvolve
+        });
+        if (this.stats.evolutionTrend.length > 100) {
+            this.stats.evolutionTrend = this.stats.evolutionTrend.slice(-100);
+        }
 
         this.stats.microCount++;
         return result;
@@ -355,7 +387,7 @@ class SelfEvolver {
     }
 
     /**
-     * L4 大进化：全面认知重构 + 系统自评估 + 知识重组
+     * L4 大进化：全面认知重构 + 系统自评估 + 知识重组 + 阈值自适应
      */
     async _fullEvolution(result) {
         // 先执行中进化的所有操作
@@ -387,6 +419,42 @@ class SelfEvolver {
             }
         }
 
+        // ===== 自适应阈值调整 =====
+        const historyLen = this._evolutionHistory.length;
+        if (historyLen >= 5) {
+            // 分析最近5次进化的平均持续时间
+            const recentEvolutions = this._evolutionHistory.slice(-5);
+            const avgDuration = recentEvolutions.reduce((sum, e) => sum + (e.duration || 0), 0) / recentEvolutions.length;
+
+            // 如果进化耗时很短(<100ms)，说明进化内容太少，应降低触发门槛
+            if (avgDuration < 100 && this.intervals.minor > 120000) {
+                const oldInterval = this.intervals.minor;
+                this.intervals.minor = Math.max(60000, Math.floor(this.intervals.minor * 0.8));
+                result.actions.push(`auto_tune: minor interval ${oldInterval/60000}min→${this.intervals.minor/60000}min`);
+            }
+
+            // 如果进化耗时很长(>5000ms)，说明内容太多，应提高触发门槛
+            if (avgDuration > 5000 && this.thresholds.minor < 100) {
+                this.thresholds.minor = Math.min(200, this.thresholds.minor + 20);
+                result.actions.push(`auto_tune: minor threshold ${this.thresholds.minor - 20}→${this.thresholds.minor}`);
+            }
+
+            // 根据最近进化结果调整 full 阈值
+            const recentFullEvolutions = this._evolutionHistory.filter(e => e.level === 'full');
+            if (recentFullEvolutions.length >= 2) {
+                const lastFull = recentFullEvolutions[recentFullEvolutions.length - 1];
+                const prevFull = recentFullEvolutions[recentFullEvolutions.length - 2];
+
+                // 如果 full 进化产出越来越少，拉长间隔
+                if (lastFull && prevFull && lastFull.actions && prevFull.actions) {
+                    if (lastFull.actions.length < prevFull.actions.length * 0.5) {
+                        this.intervals.full = Math.min(172800000, Math.floor(this.intervals.full * 1.2));
+                        result.actions.push(`auto_tune: full interval extended (diminishing returns)`);
+                    }
+                }
+            }
+        }
+
         // 全量持久化
         await this._persistAll();
 
@@ -395,7 +463,8 @@ class SelfEvolver {
             time: new Date().toISOString(),
             level: 'full',
             totalExperiences: db?.getStats().totalExperiences || 0,
-            healthScore: result.evaluation?.healthScore || 0
+            healthScore: result.evaluation?.healthScore || 0,
+            duration: result.duration || 0
         });
         if (this.stats.evolutionTrend.length > 50) {
             this.stats.evolutionTrend = this.stats.evolutionTrend.slice(-50);

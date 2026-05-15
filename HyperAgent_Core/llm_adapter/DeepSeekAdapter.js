@@ -61,7 +61,7 @@ class DeepSeekAdapter extends BaseLLM {
                         try {
                             const delta = JSON.parse(data).choices?.[0]?.delta?.content;
                             if (delta) { fullContent += delta; if (onChunk) onChunk(delta); }
-                        } catch (e) {}
+                        } catch (e) { console.warn(`[llm_adapter] Unhandled error: ${e.message}`); }
                     }
                 });
                 response.data.on('end', () => resolve(fullContent));

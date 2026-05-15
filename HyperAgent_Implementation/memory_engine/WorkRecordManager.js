@@ -363,7 +363,7 @@ class WorkRecordManager {
         if (this._saveTimer) return;
         this._saveTimer = setInterval(() => {
             if (this._dirty) {
-                this.save().catch(() => {});
+                this.save().catch(e => console.warn(`[memory_engine] Caught: ${e.message}`));
             }
         }, this.autoSaveInterval);
         // 不让定时器阻止进程退出
@@ -392,7 +392,7 @@ class WorkRecordManager {
                     totalSize += fs.statSync(path.join(this.storageDir, f)).size;
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
 
         return {
             storageDir: this.storageDir,

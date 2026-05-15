@@ -525,7 +525,7 @@ class ConversationEngine {
                     }
                     parts.push(`[设备]\n${deviceLines.join('\n')}`);
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[conversation] Unhandled error: ${e.message}`); }
         }
 
         // === 当前时间（实时注入，防止LLM幻觉时间） ===

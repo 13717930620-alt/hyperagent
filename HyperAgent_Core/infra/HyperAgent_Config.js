@@ -16,7 +16,7 @@ try {
 try {
     const dotenv = require('dotenv');
     dotenv.config();
-} catch (e) {}
+} catch (e) { console.warn(`[infra] Unhandled error: ${e.message}`); }
 
 function env(key, defaultValue) {
     return process.env[key] !== undefined ? process.env[key] : defaultValue;

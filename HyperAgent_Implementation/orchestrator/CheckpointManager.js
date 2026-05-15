@@ -186,7 +186,7 @@ class CheckpointManager {
                     totalSize += fs.statSync(path.join(this.storageDir, f)).size;
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
 
         return {
             enabled: this.enabled,
@@ -246,7 +246,7 @@ class CheckpointManager {
                 const idx = chain.indexOf(entry);
                 if (idx >= 0) {
                     const removed = chain.splice(idx, 1)[0];
-                    try { fs.unlinkSync(path.join(this.storageDir, `${removed.id}.json`)); } catch (e) {}
+                    try { fs.unlinkSync(path.join(this.storageDir, `${removed.id}.json`)); } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
                 }
             }
         }

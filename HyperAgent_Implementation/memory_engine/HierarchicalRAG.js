@@ -165,7 +165,7 @@ class HierarchicalRAG {
                     if (docIds && !docIds.includes(r.metadata?.docId)) continue;
                     results.push({ ...r, text: r.text || r.content });
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
         }
 
         // 内存索引 fallback

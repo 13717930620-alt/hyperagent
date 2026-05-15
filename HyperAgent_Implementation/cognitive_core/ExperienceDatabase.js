@@ -331,7 +331,7 @@ class ExperienceDatabase {
                     fs.unlinkSync(path.join(this.storageDir, f));
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         return true;
     }

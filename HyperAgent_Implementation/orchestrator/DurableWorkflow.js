@@ -257,7 +257,7 @@ class DurableWorkflow {
                             startedAt: data.state.startedAt
                         });
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
             }
         } catch (e) {
             // Directory may not exist

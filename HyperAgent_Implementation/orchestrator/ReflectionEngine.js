@@ -167,7 +167,7 @@ class ReflectionEngine {
                     const scoreMatch = evaluation.llmFeedback.match(/(\d+)\s*\/?\s*10/);
                     if (scoreMatch) evaluation.qualityScore = Math.max(evaluation.qualityScore, parseInt(scoreMatch[0]) / 10);
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
         }
 
         // 6. 提取经验教训并存入记忆
@@ -212,7 +212,7 @@ class ReflectionEngine {
                         lessons.push(line.trim());
                     }
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
         }
 
         // 将教训存入 L2 记忆

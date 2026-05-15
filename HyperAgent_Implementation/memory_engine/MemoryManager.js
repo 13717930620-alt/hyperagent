@@ -373,7 +373,7 @@ class MemoryManager {
             // 删除持久化文件
             for (const id of toDelete) {
                 const filePath = path.join(this.storageDir, `${level}_${id}.json`);
-                try { fs.unlinkSync(filePath); } catch (e) {}
+                try { fs.unlinkSync(filePath); } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
             }
         }
 
@@ -393,7 +393,7 @@ class MemoryManager {
                     this.layers[level].set(data.id, data);
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
     }
 
     async _persist(id, item, level) {
@@ -415,7 +415,7 @@ class MemoryManager {
                         recovered++;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
         }
         if (recovered > 0) {
             console.log(`[MemoryManager] 从磁盘恢复 ${recovered} 条记忆`);

@@ -195,7 +195,7 @@ class MCPClient extends EventEmitter {
 
         try {
             await this._sendRequest(serverName, 'shutdown', {});
-        } catch (e) {}
+        } catch (e) { console.warn(`[mcp_client] Unhandled error: ${e.message}`); }
 
         client.transport.process.kill();
         this.clients.delete(serverName);
@@ -290,7 +290,7 @@ class MCPClient extends EventEmitter {
 
         try {
             client.transport.stdin.write(notification);
-        } catch (e) {}
+        } catch (e) { console.warn(`[mcp_client] Unhandled error: ${e.message}`); }
     }
 
     _processMessages(serverName, buffer, onMessage) {

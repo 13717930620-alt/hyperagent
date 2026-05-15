@@ -331,6 +331,166 @@ class ReasoningEngine {
         this._reasoningCache.clear();
     }
 
+    /**
+     * 前向链推理——多规则链式推导更深入结论
+     * @param {object} situation
+     * @param {object} context
+     * @param {number} maxDepth - 最大推理深度
+     * @returns {object[]} 推理链
+     */
+    forwardChain(situation, context = {}, maxDepth = 3) {
+        const chain = [];
+        const derivedFacts = [...this._extractFacts(situation, context)];
+        const appliedRuleIds = new Set();
+
+        for (let depth = 0; depth < maxDepth; depth++) {
+            const allRules = [...this._builtinRules, ...this._learnedRules];
+            let newFacts = false;
+
+            for (const rule of allRules) {
+                if (appliedRuleIds.has(rule.name)) continue;
+
+                const mockContext = { ...context, currentState: Object.fromEntries(
+                    derivedFacts.map(f => [f.field, f.value])
+                )};
+                const mockSituation = Object.fromEntries(
+                    derivedFacts.filter(f => !f.field.startsWith('state.')).map(f => [f.field, f.value])
+                );
+
+                const match = this._matchRule(rule, derivedFacts);
+                if (match.matched) {
+                    appliedRuleIds.add(rule.name);
+                    const conclusion = this._applyRule(rule, match.bindings);
+                    chain.push({
+                        depth,
+                        rule: rule.name,
+                        category: rule.category || 'general',
+                        conclusion: conclusion.text,
+                        priority: rule.priority || 5,
+                        confidence: rule.confidence || 0.5
+                    });
+
+                    // 将规则的结论作为新事实加入（用于后续深度推理）
+                    derivedFacts.push({
+                        field: `derived.${rule.name}`,
+                        value: conclusion.text,
+                        source: 'forward_chain'
+                    });
+                    newFacts = true;
+                }
+            }
+
+            if (!newFacts) break; // 没有新事实，停止链式推理
+        }
+
+        // 按优先级排序
+        chain.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+        return chain;
+    }
+
+    /**
+     * 从执行结果中学习规则——分析成功/失败模式，自动生成规则
+     * @param {object[]} history - 执行历史记录
+     * @returns {number} 新学习的规则数
+     */
+    learnFromHistory(history) {
+        if (!history || history.length < 5) return 0;
+
+        let newRules = 0;
+
+        // 1. 分析失败模式
+        const failures = history.filter(h => h.outcome && h.outcome.success === false);
+        const failureByType = {};
+        for (const f of failures) {
+            const type = f.type || f.action || 'unknown';
+            if (!failureByType[type]) failureByType[type] = [];
+            failureByType[type].push(f);
+        }
+
+        for (const [type, instances] of Object.entries(failureByType)) {
+            if (instances.length >= 3) {
+                // 提取常见错误信息
+                const errors = instances
+                    .map(i => i.outcome?.error || i.error || '')
+                    .filter(Boolean);
+                const commonError = this._mostCommon(errors);
+
+                if (commonError && !this._learnedRules.some(r => r.condition?.pattern === `failure_${type}`)) {
+                    this._learnedRules.push({
+                        id: `learned_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                        name: `从经验学习:${type}失败预防`,
+                        condition: { type: 'pattern', pattern: `failure_${type}`, predicate: 'gte', value: 1 },
+                        action: `操作"${type}"曾有${instances.length}次失败记录。常见错误: ${commonError}。建议执行前检查前置条件`,
+                        confidence: Math.min(0.7, 0.3 + instances.length * 0.05),
+                        priority: 5,
+                        category: 'learned',
+                        createdAt: new Date().toISOString(),
+                        hitCount: 0
+                    });
+                    newRules++;
+                }
+            }
+        }
+
+        // 2. 分析成功模式
+        const successes = history.filter(h => h.outcome && h.outcome.success === true);
+        const successByContext = {};
+        for (const s of successes) {
+            const ctx = s.context ? JSON.stringify(s.context).substring(0, 50) : 'default';
+            if (!successByContext[ctx]) successByContext[ctx] = [];
+            successByContext[ctx].push(s);
+        }
+
+        for (const [ctx, instances] of Object.entries(successByContext)) {
+            if (instances.length >= 5 && !this._learnedRules.some(r => r.name.includes(ctx.substring(0, 20)))) {
+                this._learnedRules.push({
+                    id: `learned_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                    name: `成功模式:${ctx.substring(0, 20)}`,
+                    condition: { type: 'context', context: ctx, predicate: 'eq', value: true },
+                    action: `在类似上下文"${ctx.substring(0, 30)}"中，之前${instances.length}次操作均成功`,
+                    confidence: Math.min(0.8, 0.3 + instances.length * 0.05),
+                    priority: 4,
+                    category: 'learned',
+                    createdAt: new Date().toISOString(),
+                    hitCount: 0
+                });
+                newRules++;
+            }
+        }
+
+        // 限制学习规则总数
+        if (this._learnedRules.length > 200) {
+            this._learnedRules = this._learnedRules
+                .sort((a, b) => (a.confidence || 0) - (b.confidence || 0))
+                .slice(-150);
+        }
+
+        return newRules;
+    }
+
+    /**
+     * 校准规则置信度——基于历史命中率调整
+     */
+    calibrateConfidence() {
+        for (const rule of this._learnedRules) {
+            if (rule.hitCount > 0) {
+                // 命中越多，置信度越高（但有上限）
+                rule.confidence = Math.min(0.9, (rule.confidence || 0.3) + rule.hitCount * 0.02);
+            } else if (rule.confidence > 0.3) {
+                // 长期未命中，缓慢衰减
+                rule.confidence *= 0.98;
+            }
+        }
+        return this._learnedRules.length;
+    }
+
+    _mostCommon(items) {
+        if (!items.length) return null;
+        const freq = {};
+        for (const item of items) freq[item] = (freq[item] || 0) + 1;
+        return Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+    }
+
     getStats() {
         return { ...this.stats, learnedRules: this._learnedRules.length, builtinRules: this._builtinRules.length };
     }
@@ -339,47 +499,182 @@ class ReasoningEngine {
 
     _initBuiltinRules() {
         return [
-            // 系统状态规则
+            // ======= 系统状态规则 =======
             {
                 name: '高CPU负载规则',
                 condition: { field: 'cpu.load', predicate: 'gt', value: 80 },
-                action: '系统CPU负载过高，可能需要降负或检查异常进程',
-                priority: 8
+                action: '系统CPU负载过高（>80%），可能需要降负或检查异常进程',
+                priority: 8, category: 'system', confidence: 0.85, ttl: 300000
+            },
+            {
+                name: 'CPU异常飙升',
+                condition: { field: 'cpu.load', predicate: 'gt', value: 95 },
+                action: 'CPU负载异常飙升（>95%），可能是进程死循环或挖矿程序，建议立即检查进程列表',
+                priority: 10, category: 'security', confidence: 0.9, ttl: 60000
             },
             {
                 name: '内存不足规则',
                 condition: { field: 'memory.usage', predicate: 'gt', value: 90 },
-                action: '系统内存即将耗尽，建议关闭不必要的程序',
-                priority: 9
+                action: '系统内存即将耗尽（>90%），建议关闭不必要的程序或检查内存泄漏',
+                priority: 9, category: 'system', confidence: 0.85, ttl: 120000
             },
             {
-                name: '磁盘空间规则',
-                condition: { field: 'disk.freeRatio', predicate: 'lt', value: 10 },
-                action: '磁盘空间不足，需要清理',
-                priority: 7
+                name: '内存中度紧张',
+                condition: { field: 'memory.usage', predicate: 'gt', value: 75 },
+                action: '内存使用率偏高（>75%），注意控制同时运行的程序数量',
+                priority: 5, category: 'system', confidence: 0.7, ttl: 300000
             },
-
-            // 行为规则
+            {
+                name: '磁盘空间不足规则',
+                condition: { field: 'disk.freeRatio', predicate: 'lt', value: 10 },
+                action: '磁盘空间不足（剩余<10%），需要清理临时文件或扩展存储',
+                priority: 7, category: 'system', confidence: 0.8, ttl: 600000
+            },
+            {
+                name: '磁盘即将写满',
+                condition: { field: 'disk.freeRatio', predicate: 'lt', value: 5 },
+                action: '磁盘即将写满（剩余<5%），紧急清理，否则程序可能无法正常运行',
+                priority: 10, category: 'system', confidence: 0.9, ttl: 300000
+            },
+            {
+                name: '磁盘写入异常',
+                condition: { type: 'pattern', pattern: 'disk_write_surge', predicate: 'gte', value: 3 },
+                action: '磁盘写入量持续异常，可能是日志暴增或程序在大量写盘',
+                priority: 6, category: 'system', confidence: 0.7, ttl: 300000
+            },
+            // ======= 进程和行为规则 =======
             {
                 name: '重复失败规则',
                 condition: { type: 'pattern', pattern: 'repeated_failure', predicate: 'gte', value: 3 },
-                action: '同一操作连续失败，建议检查环境或换用替代方案',
-                priority: 6
+                action: '同一操作连续失败3次以上，建议检查运行环境或用替代方案',
+                priority: 6, category: 'behavior', confidence: 0.75, ttl: 60000
+            },
+            {
+                name: '频繁失败告警',
+                condition: { type: 'pattern', pattern: 'repeated_failure', predicate: 'gte', value: 10 },
+                action: '同一操作连续失败10次，建议彻底排查问题，暂停自动重试',
+                priority: 9, category: 'behavior', confidence: 0.9, ttl: 30000
             },
             {
                 name: '长时间空闲规则',
                 condition: { field: 'idle.time', predicate: 'gt', value: 30 },
-                action: '系统长时间空闲，可执行定期维护任务',
-                priority: 3
+                action: '系统空闲超过30分钟，可执行定期维护任务或进入低功耗模式',
+                priority: 3, category: 'system', confidence: 0.6, ttl: 600000
             },
-
-            // 安全规则
+            // ======= 网络规则 =======
+            {
+                name: '网络延迟过高',
+                condition: { field: 'network.latency', predicate: 'gt', value: 500 },
+                action: '网络延迟超过500ms，连接质量差，建议检查网络或切换连接方式',
+                priority: 5, category: 'network', confidence: 0.7, ttl: 300000
+            },
+            {
+                name: '网络连接断开',
+                condition: { field: 'network.connected', predicate: 'eq', value: false },
+                action: '网络连接已断开，部分功能将不可用，尝试自动重连',
+                priority: 8, category: 'network', confidence: 0.9, ttl: 60000
+            },
+            {
+                name: 'DNS解析失败',
+                condition: { type: 'pattern', pattern: 'dns_failure', predicate: 'gte', value: 2 },
+                action: 'DNS解析连续失败，可能是DNS服务器故障或网络配置问题',
+                priority: 7, category: 'network', confidence: 0.75, ttl: 120000
+            },
+            {
+                name: '端口冲突',
+                condition: { type: 'pattern', pattern: 'port_conflict', predicate: 'gte', value: 1 },
+                action: '检测到端口冲突，建议更换端口或关闭占用端口的程序',
+                priority: 6, category: 'network', confidence: 0.7, ttl: 300000
+            },
+            // ======= 安全规则 =======
             {
                 name: '安全边界规则',
                 condition: { type: 'permission', level: 'high_risk', predicate: 'eq', value: true },
-                action: '高风险操作需要用户明确授权',
-                priority: 10
-            }
+                action: '高风险操作需要用户明确授权后方可执行',
+                priority: 10, category: 'security', confidence: 1.0, ttl: 0
+            },
+            {
+                name: '敏感文件访问',
+                condition: { type: 'permission', level: 'sensitive_file', predicate: 'eq', value: true },
+                action: '正在访问敏感文件，需要确认用户意图',
+                priority: 9, category: 'security', confidence: 0.9, ttl: 0
+            },
+            {
+                name: '异常登录检测',
+                condition: { field: 'auth.loginAttempts', predicate: 'gt', value: 5 },
+                action: '短时间内多次登录失败，可能遭受暴力破解攻击',
+                priority: 10, category: 'security', confidence: 0.85, ttl: 60000
+            },
+            {
+                name: '外设接入警告',
+                condition: { type: 'pattern', pattern: 'new_usb_device', predicate: 'gte', value: 1 },
+                action: '检测到新的USB设备接入，注意数据安全',
+                priority: 5, category: 'security', confidence: 0.5, ttl: 600000
+            },
+            // ======= 文件系统规则 =======
+            {
+                name: '文件过大',
+                condition: { field: 'file.size', predicate: 'gt', value: 104857600 },
+                action: '操作涉及大于100MB的文件，注意内存占用和读写时间',
+                priority: 4, category: 'filesystem', confidence: 0.6, ttl: 0
+            },
+            {
+                name: '大量文件操作',
+                condition: { type: 'pattern', pattern: 'batch_file_ops', predicate: 'gte', value: 50 },
+                action: '批量操作超过50个文件，建议分批处理并检查进度',
+                priority: 5, category: 'filesystem', confidence: 0.65, ttl: 120000
+            },
+            {
+                name: '临时文件堆积',
+                condition: { field: 'disk.tempRatio', predicate: 'gt', value: 20 },
+                action: '临时文件占用空间超过20%，建议运行磁盘清理',
+                priority: 4, category: 'filesystem', confidence: 0.6, ttl: 3600000
+            },
+            // ======= 用户行为规则 =======
+            {
+                name: '高频操作限制',
+                condition: { type: 'pattern', pattern: 'rapid_operations', predicate: 'gte', value: 20 },
+                action: '操作频率过高（1分钟内>20次），可能误触或自动化脚本运行中',
+                priority: 4, category: 'behavior', confidence: 0.6, ttl: 30000
+            },
+            {
+                name: '长时间无响应',
+                condition: { field: 'app.responsive', predicate: 'eq', value: false },
+                action: '应用程序无响应，可尝试等待或强制关闭',
+                priority: 7, category: 'behavior', confidence: 0.75, ttl: 30000
+            },
+            // ======= 工具执行规则 =======
+            {
+                name: '命令执行超时',
+                condition: { field: 'exec.timeout', predicate: 'eq', value: true },
+                action: '命令执行超时，建议检查命令是否陷入死循环或需要更多时间',
+                priority: 6, category: 'execution', confidence: 0.7, ttl: 60000
+            },
+            {
+                name: '命令返回非零',
+                condition: { field: 'exec.exitCode', predicate: 'neq', value: 0 },
+                action: '命令返回非零退出码，执行可能未如预期完成',
+                priority: 6, category: 'execution', confidence: 0.7, ttl: 30000
+            },
+            {
+                name: '管道输出过大',
+                condition: { field: 'exec.outputSize', predicate: 'gt', value: 10485760 },
+                action: '命令输出超过10MB，建议考虑写入文件而非直接输出到终端',
+                priority: 3, category: 'execution', confidence: 0.5, ttl: 60000
+            },
+            // ======= 内存/推理规则 =======
+            {
+                name: '记忆检索命中率低',
+                condition: { type: 'pattern', pattern: 'low_memory_hitrate', predicate: 'lt', value: 0.3 },
+                action: '记忆检索命中率偏低，可能需要重建索引或检查查询质量',
+                priority: 3, category: 'system', confidence: 0.5, ttl: 3600000
+            },
+            {
+                name: '推理缓存增长过快',
+                condition: { type: 'pattern', pattern: 'cache_growth', predicate: 'gte', value: 100 },
+                action: '推理缓存增长过快，可能是在处理大量新情境，考虑扩大缓存或定期清理',
+                priority: 2, category: 'system', confidence: 0.5, ttl: 3600000
+            },
         ];
     }
 
@@ -422,13 +717,34 @@ class ReasoningEngine {
         const cond = rule.condition;
         const bindings = {};
 
-        // 基于字段的匹配
+        // 基于字段的匹配（精确 + 模糊 + 语义）
         if (cond.field) {
-            const fact = facts.find(f => {
+            // 精确匹配
+            let fact = facts.find(f => {
                 const fField = f.field.toLowerCase().replace(/^state\./, '');
                 const cField = cond.field.toLowerCase().replace(/^state\./, '');
-                return fField === cField || fField.endsWith('.' + cField.split('.').pop());
+                return fField === cField;
             });
+
+            // 模糊匹配：按路径后缀匹配
+            if (!fact) {
+                fact = facts.find(f => {
+                    const fField = f.field.toLowerCase().replace(/^state\./, '');
+                    const cField = cond.field.toLowerCase().replace(/^state\./, '');
+                    const suffix = cField.split('.').pop();
+                    return fField.endsWith('.' + suffix) || fField === suffix;
+                });
+            }
+
+            // 语义匹配：字段名包含关系
+            if (!fact) {
+                const cField = cond.field.toLowerCase().replace(/^state\./, '');
+                const cParts = cField.split('.');
+                fact = facts.find(f => {
+                    const fField = f.field.toLowerCase().replace(/^state\./, '');
+                    return cParts.some(p => fField.includes(p)) || fField.includes(cField);
+                });
+            }
 
             if (!fact) return { matched: false };
 
@@ -440,8 +756,8 @@ class ReasoningEngine {
                 case 'gte': matched = parseFloat(value) >= cond.value; break;
                 case 'lt': matched = parseFloat(value) < cond.value; break;
                 case 'lte': matched = parseFloat(value) <= cond.value; break;
-                case 'eq': matched = value === cond.value || parseFloat(value) === cond.value; break;
-                case 'neq': matched = value !== cond.value; break;
+                case 'eq': matched = value === cond.value || parseFloat(value) === cond.value || String(value) === String(cond.value); break;
+                case 'neq': matched = value !== cond.value && String(value) !== String(cond.value); break;
                 case 'contains': matched = String(value).toLowerCase().includes(String(cond.value).toLowerCase()); break;
                 default: matched = false;
             }
@@ -453,9 +769,38 @@ class ReasoningEngine {
             return { matched: false };
         }
 
-        // 基于类型的匹配
-        if (cond.type === 'pattern' && facts.some(f => f.field.includes('pattern'))) {
-            return { matched: true, bindings: { pattern: cond.pattern } };
+        // 基于类型的匹配（模式匹配）
+        if (cond.type === 'pattern') {
+            const matched = facts.some(f => {
+                const fVal = String(f.value || '');
+                return fVal.includes(cond.pattern) || f.field.includes(cond.pattern);
+            });
+            if (matched) {
+                return { matched: true, bindings: { pattern: cond.pattern } };
+            }
+            return { matched: false };
+        }
+
+        // 权限级别匹配
+        if (cond.type === 'permission') {
+            const matched = facts.some(f =>
+                (f.field.includes('risk') || f.field.includes('permission') || f.field.includes('level')) &&
+                (String(f.value).toLowerCase().includes((cond.level || '').toLowerCase()) ||
+                 String(f.value).toLowerCase().includes('high'))
+            );
+            if (matched) {
+                return { matched: true, bindings: { riskLevel: cond.level } };
+            }
+            return { matched: false };
+        }
+
+        // 上下文匹配（学习规则使用）
+        if (cond.type === 'context' && cond.context) {
+            const matched = facts.some(f => {
+                const fVal = String(f.value || '');
+                return fVal.includes(cond.context.substring(0, 30));
+            });
+            return { matched, bindings: {} };
         }
 
         return { matched: false };
@@ -483,10 +828,29 @@ class ReasoningEngine {
     }
 
     _calculateDeductionConfidence(matchedRules, facts) {
-        // 基于规则置信度和事实完整度计算
-        const ruleConfidence = matchedRules.reduce((sum, m) => sum + (m.rule.confidence || 0.5), 0) / matchedRules.length;
-        const ruleCountBonus = Math.min(0.2, matchedRules.length * 0.05);
-        return Math.min(0.95, ruleConfidence + ruleCountBonus);
+        if (matchedRules.length === 0) return 0;
+
+        // 基础：规则自身置信度的加权平均（按优先级加权）
+        const totalPriority = matchedRules.reduce((sum, m) => sum + (m.rule.priority || 5), 0);
+        const weightedConfidence = matchedRules.reduce((sum, m) => {
+            const weight = (m.rule.priority || 5) / totalPriority;
+            return sum + (m.rule.confidence || 0.5) * weight;
+        }, 0);
+
+        // 规则数量奖励（多规则相互印证）
+        const countBonus = Math.min(0.15, matchedRules.length * 0.03);
+
+        // 事实完整度惩罚：检查是否缺少关键事实
+        const requiredFields = matchedRules.map(m => m.rule.condition?.field).filter(Boolean);
+        const missingFields = requiredFields.filter(f => !facts.some(fact => {
+            const fField = fact.field.toLowerCase().replace(/^state\./, '');
+            const cField = (f || '').toLowerCase().replace(/^state\./, '');
+            return fField === cField || fField.endsWith('.' + cField.split('.').pop());
+        }));
+        const completenessPenalty = missingFields.length > 0 ? 0.1 * missingFields.length : 0;
+
+        const finalConfidence = weightedConfidence + countBonus - completenessPenalty;
+        return Math.max(0.05, Math.min(0.95, finalConfidence));
     }
 
     _collectInstances(situation, context) {

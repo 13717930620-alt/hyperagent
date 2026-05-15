@@ -71,7 +71,7 @@ class ContextManager {
                         fs.readFileSync(path.join(this._storageDir, files[i]), 'utf8')
                     );
                     contexts.push(data);
-                } catch (e) {}
+                } catch (e) { console.warn(`[context_manager] Unhandled error: ${e.message}`); }
             }
 
             // 合并上下文
@@ -651,7 +651,7 @@ class ContextManager {
             if (!fs.existsSync(this._storageDir)) {
                 fs.mkdirSync(this._storageDir, { recursive: true });
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[context_manager] Unhandled error: ${e.message}`); }
     }
 
     // 统计

@@ -37,12 +37,12 @@ const TunnelService = require('./services/TunnelService');
 const ConfigManager = require('./services/ConfigManager');
 
 let ExecutionLogger, MetricsCollector, ModelRouter, ModelFallbackChain;
-try { ExecutionLogger = require('./JingxuanAgent_Monitoring/ExecutionLogger'); } catch (e) {}
-try { MetricsCollector = require('./JingxuanAgent_Monitoring/MetricsCollector'); } catch (e) {}
+try { ExecutionLogger = require('./JingxuanAgent_Monitoring/ExecutionLogger'); } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
+try { MetricsCollector = require('./JingxuanAgent_Monitoring/MetricsCollector'); } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 try {
     ModelRouter = require('./JingxuanAgent_Core/llm_adapter/ModelRouter');
     ModelFallbackChain = require('./JingxuanAgent_Core/llm_adapter/ModelFallbackChain');
-} catch (e) {}
+} catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 
 const JingxuanAgentUpgradeIntegrator = require('./JingxuanAgent_Implementation/orchestrator/JingxuanAgentUpgradeIntegrator');
 
@@ -113,7 +113,7 @@ class JingxuanAgent {
                     if (this._ccTaskManager._storage?._ready) {
                         this._ccTaskManager._storage.setKnowledge(`task:${task.id}`, JSON.stringify(task), 'task');
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
                 return task;
             },
             getTasks: () => Array.from(this._ccTaskManager._tasks.values()),
@@ -131,14 +131,14 @@ class JingxuanAgent {
                     console.warn(`[JingxuanAgent] "${adapter}" selected but no API key set`);
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
     }
 
     async init() {
         this._validateConfig();
         try {
             let config = { memory: { embedding: {} } };
-            try { config = require('./JingxuanAgent_Config.js'); } catch (e) {}
+            try { config = require('./JingxuanAgent_Config.js'); } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
             const embedConfig = config.memory?.embedding || {};
 
             this.components.stateManager = new StateManager();
@@ -249,7 +249,7 @@ class JingxuanAgent {
                 await this.components.memoryManager.loadCrossSessionMemories();
                 await this.components.contextManager.loadCrossSession();
                 setInterval(() => {
-                    this.components.memoryManager.autoPrune().catch(() => {});
+                    this.components.memoryManager.autoPrune().catch(e => console.warn(`[.] Caught: ${e.message}`));
                 }, 1800000);
             } catch (e) {
                 console.warn('[JingxuanAgent] Cross-session memory load failed:', e.message);
@@ -263,7 +263,7 @@ class JingxuanAgent {
             try {
                 const cfg = require('./JingxuanAgent_Config.js');
                 if (cfg.device) deviceConfig = cfg.device;
-            } catch (e) {}
+            } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
             this.components.deviceManager = new DeviceManager(deviceConfig);
 
             // 注入 PermissionSystem 到 SafetyEngine
@@ -354,7 +354,7 @@ class JingxuanAgent {
                 };
 
                 setInterval(() => {
-                    this.components.productivity.memoryEngine.runAutoDream().catch(() => {});
+                    this.components.productivity.memoryEngine.runAutoDream().catch(e => console.warn(`[.] Caught: ${e.message}`));
                 }, 21600000);
 
                 console.log('[JingxuanAgent] Productivity Core READY');
@@ -380,7 +380,7 @@ class JingxuanAgent {
                             setImmediate(() => {
                                 this.components.memoryPipeline.vectorStore.buildEmbeddings({ force: false })
                                     .then(r => console.log(`[JingxuanAgent] Local embeddings: ${r.indexed}/${r.total}`))
-                                    .catch(() => {});
+                                    .catch(e => console.warn(`[.] Caught: ${e.message}`));
                             });
                         }
                     }
@@ -405,7 +405,7 @@ class JingxuanAgent {
                 console.warn('[JingxuanAgent] ContinualLearner init failed:', e.message);
             }
 
-            await this.components.registry.autoDiscover().catch(() => {});
+            await this.components.registry.autoDiscover().catch(e => console.warn(`[.] Caught: ${e.message}`));
             if (this.components.registry.capabilityMap.size > 0) {
                 this.components.sopGenerator.setCapabilityMap(this.components.registry.capabilityMap);
             }
@@ -417,7 +417,7 @@ class JingxuanAgent {
                     this.components.mcpBridge = mcpPlugin;
                     console.log('[JingxuanAgent] MCP Bridge plugin tracked in components');
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 
             this._permissionSystem.grant('pc:admin', 4, 'permanent');
 
@@ -436,7 +436,7 @@ class JingxuanAgent {
                 console.warn('[JingxuanAgent] v4.0 upgrade integration warning (non-fatal):', e.message);
             }
 
-            this.health.runAll().then(h => this.log.info('Health check', { status: h.status })).catch(() => {});
+            this.health.runAll().then(h => this.log.info('Health check', { status: h.status })).catch(e => console.warn(`[.] Caught: ${e.message}`));
 
             console.log(`[JingxuanAgent] v${this.version} 启动完成`);
             console.log(`[JingxuanAgent] 模块: 记忆系统=${!!this.components.memoryManager} 编排器=${!!this.components.orchestrator} 执行器=${!!this.components.atomicExecutor}`);
@@ -459,7 +459,7 @@ class JingxuanAgent {
         try {
             const AD = require('./JingxuanAgent_Implementation/device_abstraction/AutomotiveDevice');
             this.components.deviceManager.registerDevice('automotive', new AD({ vehicleName: 'Connected Vehicle' }));
-        } catch (e) {}
+        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
     }
 
     _initOptionalComponents() {
@@ -483,7 +483,7 @@ class JingxuanAgent {
                                     strengths: modelCfg.strengths || []
                                 });
                             }
-                        } catch (e) {}
+                        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
                     }
                 }
 
@@ -508,7 +508,7 @@ class JingxuanAgent {
                 this._mcpConfig = { mcpServers: config.mcpServers };
                 console.log('[JingxuanAgent] Computer control capability loaded (inactive, requires user permission)');
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
     }
 
     _getEnabledFeatures() {
@@ -841,7 +841,7 @@ class JingxuanAgent {
         try {
             const userConfig = require('./JingxuanAgent_Config.js');
             if (userConfig.llm) config = userConfig.llm;
-        } catch (e) {}
+        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 
         for (const [adapterName, check] of Object.entries({
             glm: (c) => c.glm?.apiKey ? { Adapter: require('./JingxuanAgent_Core/llm_adapter/GLMAdapter'), cfg: { apiKey: c.glm.apiKey, baseUrl: c.glm.baseUrl, model: c.glm.model, maxTokens: c.glm.maxTokens, temperature: c.glm.temperature } } : null,
@@ -855,7 +855,7 @@ class JingxuanAgent {
                 try {
                     const result = check(config);
                     if (result) return new result.Adapter(result.cfg);
-                } catch (e) {}
+                } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
             }
         }
 
@@ -910,7 +910,7 @@ class JingxuanAgent {
         const startTime = Date.now();
         this.metrics.increment('chat.total');
 
-        try { await this.rateLimiter.acquire(); } catch (e) {}
+        try { await this.rateLimiter.acquire(); } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 
         // Step 1: 检测设备切换
         const deviceSwitchIntent = this._detectDeviceSwitch(userMessage);
@@ -1024,7 +1024,7 @@ class JingxuanAgent {
                             if (summary && summary.length < 400 && !summary.includes('{"tool":')) {
                                 result.response = summary.trim();
                             }
-                        } catch (e) {}
+                        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
                     }
                 } else {
                     toolResult = await this.components.orchestrator.runTask(
@@ -1066,7 +1066,7 @@ class JingxuanAgent {
                 }
                 await this.components.workRecord.save();
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
 
         this.components.contextManager.addMessage('assistant', result?.response || '');
         result.duration = Date.now() - startTime;
@@ -1078,7 +1078,7 @@ class JingxuanAgent {
                 if (result.toolCallCount > 0) {
                     result.toolCallCount;
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
         }
 
         this.metrics.timing('chat.duration', result.duration);
@@ -1090,7 +1090,7 @@ class JingxuanAgent {
                     tokens: result.toolCallCount || 0,
                 });
                 if (result.duration > 30000) this.storage.recordMetric('chat.slow', result.duration);
-            } catch (e) {}
+            } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
         }
 
         return result;
@@ -1555,7 +1555,7 @@ async function main() {
                 }
                 const s = agent.getStats();
                 if (s) Object.assign(data, s);
-            } catch (e) {}
+            } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
             res.json(data);
         });
 

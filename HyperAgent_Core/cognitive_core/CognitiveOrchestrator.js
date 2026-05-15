@@ -219,7 +219,7 @@ class CognitiveOrchestrator {
                     result
                 };
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // 退化到完整闭环
         return this.runTask(task, options);
@@ -254,7 +254,7 @@ class CognitiveOrchestrator {
                     this.deviceManager.getFullReport() :
                     this.deviceManager.getDeviceStats ?
                         this.deviceManager.getDeviceStats() : {};
-            } catch (e) {}
+            } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         }
 
         // 获取最近经验

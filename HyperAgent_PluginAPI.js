@@ -101,13 +101,13 @@ class PluginLoader {
           }
         });
         this.watchers.push(watcher);
-      } catch (e) {}
+      } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
     }
   }
 
   stopWatching() {
     for (const w of this.watchers) {
-      try { w.close(); } catch (e) {}
+      try { w.close(); } catch (e) { console.warn(`[.] Unhandled error: ${e.message}`); }
     }
     this.watchers = [];
   }

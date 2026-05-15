@@ -90,7 +90,7 @@ class CarrierSelfDiscovery {
             try {
                 info.usb = this._execWMIC('Win32_USBControllerDevice') || [];
                 info.peripherals = this._execWMIC('Win32_PnPEntity') || [];
-            } catch (e) {}
+            } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         }
 
         return info;
@@ -118,14 +118,14 @@ class CarrierSelfDiscovery {
                 info.manufacturer = osInfo[0].Manufacturer || '';
                 info.model = osInfo[0].Model || '';
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         try {
             const biosInfo = this._execWMIC('Win32_BIOS');
             if (biosInfo && biosInfo.length > 0) {
                 info.bios = biosInfo[0].SMBIOSBIOSVersion || '';
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // OS 版本详情
         try {
@@ -136,7 +136,7 @@ class CarrierSelfDiscovery {
                     info.caption = osDetail[0].Caption;
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // 系统服务（只数数量）
         try {
@@ -248,7 +248,7 @@ class CarrierSelfDiscovery {
                 status: u.Status || u.status || '',
                 sid: u.SID || u.sid || ''
             }));
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         return info;
     }
@@ -322,7 +322,7 @@ class CarrierSelfDiscovery {
             if (Object.keys(netInterfaces).length > 0) {
                 capabilities.interfaces.push('network');
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // 文件系统能力
         capabilities.sensors.push('cpu_usage', 'memory_usage', 'disk_usage', 'process_count');
@@ -403,7 +403,7 @@ class CarrierSelfDiscovery {
                     });
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // fallback: 检查常见盘符
         if (disks.length === 0) {
@@ -412,7 +412,7 @@ class CarrierSelfDiscovery {
                 try {
                     const stat = fs.statSync(p);
                     disks.push({ drive: p, total: 0, free: 0 });
-                } catch (e) {}
+                } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
             }
         }
 
@@ -430,7 +430,7 @@ class CarrierSelfDiscovery {
                     resolution: `${v.CurrentHorizontalResolution || 0}x${v.CurrentVerticalResolution || 0}`
                 }));
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         return [];
     }
 
@@ -467,7 +467,7 @@ class CarrierSelfDiscovery {
                         }
                     }
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         }
 
         return list;
@@ -477,49 +477,49 @@ class CarrierSelfDiscovery {
         const runtimes = [];
 
         // Node.js
-        try { runtimes.push({ name: 'Node.js', version: process.version }); } catch (e) {}
+        try { runtimes.push({ name: 'Node.js', version: process.version }); } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // Python
         try {
             const pyVer = execSync('python --version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'Python', version: pyVer });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // Git
         try {
             const gitVer = execSync('git --version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'Git', version: gitVer });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // Docker
         try {
             const dockerVer = execSync('docker --version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'Docker', version: dockerVer });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // npm
         try {
             const npmVer = execSync('npm --version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'npm', version: npmVer });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // Java
         try {
             const javaVer = execSync('java -version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'Java', version: javaVer.split('\n')[0] });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // Go
         try {
             const goVer = execSync('go version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'Go', version: goVer });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         // 包管理器
         try {
             const pipVer = execSync('pip --version 2>&1', { encoding: 'utf8', timeout: 2000 }).trim();
             runtimes.push({ name: 'pip', version: pipVer.split(' ')[1] || '' });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
 
         return runtimes;
     }
@@ -540,7 +540,7 @@ class CarrierSelfDiscovery {
                     if (key) programs.push({ name: key.replace(/^.*\\/, ''), path: val });
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         return programs;
     }
 

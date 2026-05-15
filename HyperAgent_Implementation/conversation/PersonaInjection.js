@@ -160,7 +160,7 @@ ${historySample}
         try {
             const match = text.match(/\{[\s\S]*\}/);
             if (match) return JSON.parse(match[0]);
-        } catch (e) {}
+        } catch (e) { console.warn(`[conversation] Unhandled error: ${e.message}`); }
 
         return { communicationStyle: 'general', expertise: 'general' };
     }

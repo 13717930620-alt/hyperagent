@@ -342,7 +342,7 @@ class VectorStore {
                 if (vectors && vectors[0]) {
                     this._setCache(query, vectors[0]);
                 }
-            }).catch(() => {});
+            }).catch(e => console.warn(`[memory_engine] Caught: ${e.message}`));
             return null; // 异步缓存, 本次查不到
         }
 
@@ -351,7 +351,7 @@ class VectorStore {
                 if (vectors && vectors[0]) {
                     this._setCache(query, vectors[0]);
                 }
-            }).catch(() => {});
+            }).catch(e => console.warn(`[memory_engine] Caught: ${e.message}`));
             return null;
         }
 

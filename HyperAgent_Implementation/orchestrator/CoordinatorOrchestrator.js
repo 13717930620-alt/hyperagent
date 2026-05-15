@@ -420,8 +420,8 @@ class CoordinatorOrchestrator {
                             strategyBlackboard: this._strategyBlackboard || null
                         },
                         metadata: { source: 'tool_loop_auto', toolLoop: loop }
-                    }).catch(() => {});
-                } catch (e) {}
+                    }).catch(e => console.warn(`[orchestrator] Caught: ${e.message}`));
+                } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
             }
 
             if (response.content) {
@@ -487,7 +487,7 @@ class CoordinatorOrchestrator {
                     const rawParams = typeof callData.function?.arguments === 'string'
                         ? JSON.parse(callData.function.arguments) : (callData.function?.arguments || {});
                     filePath = rawParams.file_path || rawParams.filePath || rawParams.path || null;
-                } catch (e) {}
+                } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
 
                 if (!filePath) continue;
 
@@ -780,7 +780,7 @@ class CoordinatorOrchestrator {
                             function: { name: toolName, arguments: args }
                         });
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
             }
         }
         return results;
@@ -812,7 +812,7 @@ class CoordinatorOrchestrator {
         try {
             const parsed = JSON.parse(trimmed);
             if (parsed.tool || parsed.function) return '';
-        } catch (e) {}
+        } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
 
         // 去除行内的JSON工具调用
         return text.replace(/{[^}]*?"(?:tool|function)"[^}]*?"args"[^}]*?}/g, '').trim();
@@ -979,7 +979,7 @@ JSON格式: {"tool":"工具名","args":{"参数名":"参数值"}}
                     if (reflectionResult.needsAdjustment) {
                         console.log(`[Orchestrator] 步骤${i}反思: 检测到潜在问题`);
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
             }
 
             try {
@@ -1036,7 +1036,7 @@ JSON格式: {"tool":"工具名","args":{"参数名":"参数值"}}
             if (!postResult.success && postResult.canImprove && postResult.qualityScore < 0.3) {
                 console.log(`[Orchestrator] 结果质量低(${postResult.qualityScore}), 但不再自动重试`);
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
     }
 
     async _reflectOnStep(step, error) {

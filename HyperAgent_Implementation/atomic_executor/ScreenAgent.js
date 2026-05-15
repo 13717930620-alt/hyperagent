@@ -112,7 +112,7 @@ class ScreenAgent {
         try {
             const match = text.match(/\{[\s\S]*\}/);
             if (match) return JSON.parse(match[0]);
-        } catch (e) {}
+        } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
 
         return { action: { type: 'screenshot' }, done: false };
     }
@@ -205,7 +205,7 @@ class ScreenAgent {
         try {
             const match = text.match(/\{[\s\S]*\}/);
             if (match) return JSON.parse(match[0]);
-        } catch (e) {}
+        } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
 
         return { done: false, failed: false, assessment: 'Reflect fallback', nextStep: 'continue' };
     }

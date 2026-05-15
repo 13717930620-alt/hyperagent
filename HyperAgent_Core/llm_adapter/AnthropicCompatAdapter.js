@@ -92,7 +92,7 @@ class AnthropicCompatAdapter extends BaseLLM {
                             fullContent += parsed.delta.text;
                             if (onChunk) onChunk(parsed.delta.text);
                         }
-                    } catch (e) {}
+                    } catch (e) { console.warn(`[llm_adapter] Unhandled error: ${e.message}`); }
                 }
             });
             return new Promise((resolve) => {

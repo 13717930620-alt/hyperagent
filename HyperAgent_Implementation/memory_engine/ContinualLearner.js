@@ -42,7 +42,7 @@ class ContinualLearner {
             if (!fs.existsSync(this._learningDir)) {
                 fs.mkdirSync(this._learningDir, { recursive: true });
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
     }
 
     /**
@@ -69,7 +69,7 @@ class ContinualLearner {
         }, this.evolveInterval);
 
         // 立即执行一次
-        this.absorbCycle().catch(() => {});
+        this.absorbCycle().catch(e => console.warn('[ContinualLearner] Initial absorb failed:', e.message));
 
         console.log(`[ContinualLearner] 三环学习已启动 (吸收=${this.absorbInterval/1000}s 分析=${this.analyzeInterval/60000}min 进化=${this.evolveInterval/60000}min)`);
         return true;
@@ -134,13 +134,13 @@ class ContinualLearner {
                     if (li.getCapabilities().chat) {
                         summary = await li.analyze(stateStr, '分析当前承载体状态，提取关键变化');
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
 
                 try {
                     if (li.getCapabilities().chat) {
                         entities = await li.extractEntities(stateStr);
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
 
                 // 存入 L1 记忆
                 if (this.memoryManager) {
@@ -163,7 +163,7 @@ class ContinualLearner {
                         if (diff && this.memoryManager) {
                             await this.memoryManager.pushMemory(`[StateChange] ${diff}`, 'L1');
                         }
-                    } catch (e) {}
+                    } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
                 }
             } else {
                 // 无本地模型时的简单记录
@@ -177,7 +177,7 @@ class ContinualLearner {
 
             this.stats.totalAbsorbed++;
         } catch (e) {
-            // deviceManager might not have getFullReport
+            console.warn('[ContinualLearner] Device state absorb error:', e.message);
         }
     }
 
@@ -202,7 +202,7 @@ class ContinualLearner {
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
     }
 
     async _autoSummarize() {
@@ -225,9 +225,9 @@ class ContinualLearner {
                         item._summary = summary;
                         item._summarized = true;
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
     }
 
     // 环2: 自动分析
@@ -288,7 +288,7 @@ class ContinualLearner {
                         }
                     }
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
         }
     }
 
@@ -315,15 +315,98 @@ class ContinualLearner {
                         'L2', assocKey
                     );
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
         }
     }
 
     async _analyzeTrends() {
         if (!this.deviceManager || !this.localInference || !this.localInference.isReady()) return;
-
-        // 分析设备状态趋势（简化：仅当有足够状态变化时）
         if (this._stateChangeCount < 3) return;
+
+        try {
+            // 收集最近N个状态快照中的数值指标
+            const report = this.deviceManager.getFullReport();
+            if (!report) return;
+
+            const indicators = {};
+            // CPU
+            if (report.sensors?.cpu?.usagePercent !== undefined) {
+                indicators.cpu = report.sensors.cpu.usagePercent;
+            }
+            // 内存
+            if (report.sensors?.memory?.usagePercent !== undefined) {
+                indicators.memory = parseFloat(report.sensors.memory.usagePercent);
+            }
+            // 磁盘
+            if (report.sensors?.disk && report.sensors.disk.length > 0) {
+                const mainDisk = report.sensors.disk[0];
+                indicators.diskFree = mainDisk.freeBytes;
+                indicators.diskTotal = mainDisk.totalBytes;
+                indicators.diskUsage = ((mainDisk.totalBytes - mainDisk.freeBytes) / mainDisk.totalBytes * 100);
+            }
+
+            // 检测显著变化
+            const changes = [];
+            if (this._lastDeviceState && this._lastDeviceState.sensors) {
+                const prev = this._lastDeviceState;
+                if (prev.sensors?.cpu?.usagePercent !== undefined && indicators.cpu !== undefined) {
+                    const delta = indicators.cpu - prev.sensors.cpu.usagePercent;
+                    if (Math.abs(delta) > 20) {
+                        changes.push(`CPU${delta > 0 ? '↑' : '↓'}${Math.abs(delta).toFixed(0)}%`);
+                    }
+                }
+                if (prev.sensors?.memory?.usagePercent !== undefined && indicators.memory !== undefined) {
+                    const prevMem = parseFloat(prev.sensors.memory.usagePercent);
+                    const delta = indicators.memory - prevMem;
+                    if (Math.abs(delta) > 15) {
+                        changes.push(`内存${delta > 0 ? '↑' : '↓'}${Math.abs(delta).toFixed(0)}%`);
+                    }
+                }
+            }
+
+            // 存储趋势分析结果到记忆
+            if (changes.length > 0 && this.memoryManager) {
+                const trendReport = `[TrendAnalysis] 系统状态变化: ${changes.join(', ')}`;
+                await this.memoryManager.pushMemory(trendReport, 'L2', `trend_${Date.now()}`);
+                this.stats.patternsFound += changes.length;
+            }
+
+            // 周期性变化检测（内存持续增长 = 泄漏嫌疑）
+            if (this._stateChangeCount >= 5 && this.memoryManager) {
+                const l2Layer = this.memoryManager.layers.L2;
+                if (l2Layer && l2Layer.size > 0) {
+                    const memoryEntries = [];
+                    for (const [id, item] of l2Layer) {
+                        const content = typeof item.content === 'string' ? item.content : '';
+                        if (content.includes('[DeviceState]') || content.includes('[StateChange]')) {
+                            memoryEntries.push({ id, content, ts: item.timestamp || 0 });
+                        }
+                    }
+                    // 检查内存使用趋势
+                    if (memoryEntries.length >= 3 && indicators.memory !== undefined) {
+                        const memValues = memoryEntries
+                            .map(e => {
+                                const match = e.content.match(/memory[:\s]*(\d+\.?\d*)/i);
+                                return match ? parseFloat(match[1]) : null;
+                            })
+                            .filter(v => v !== null);
+                        if (memValues.length >= 3) {
+                            const isIncreasing = memValues.every((v, i) => i === 0 || v >= memValues[i - 1]);
+                            if (isIncreasing) {
+                                const insightKey = `Insight_memory_leak_${Date.now()}`;
+                                await this.memoryManager.pushMemory(
+                                    `[CognitiveInsight] 内存使用持续上升趋势，可能存内存泄漏风险`,
+                                    'L3', insightKey
+                                );
+                                this.stats.insightsGenerated++;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[ContinualLearner] Trend analysis error:', e.message);
+        }
     }
 
     // 环3: 自动进化
@@ -379,7 +462,7 @@ class ContinualLearner {
                         );
                         this.stats.insightsGenerated++;
                     }
-                } catch (e) {}
+                } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
             }
         }
     }
@@ -412,7 +495,7 @@ class ContinualLearner {
                         'L3'
                     );
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
         }
     }
 
@@ -450,11 +533,11 @@ class ContinualLearner {
             let history = [];
             try {
                 history = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            } catch (e) {}
+            } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
             history.push(report);
             if (history.length > 100) history = history.slice(-100);
             fs.writeFileSync(filePath, JSON.stringify(history, null, 2));
-        } catch (e) {}
+        } catch (e) { console.warn(`[ContinualLearner] Error: ${e.message}`); }
     }
 
     async getLearningReport() {

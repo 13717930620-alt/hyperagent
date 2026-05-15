@@ -98,7 +98,7 @@ class DeviceStateCollector {
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[device_abstraction] Unhandled error: ${e.message}`); }
         return interfaces;
     }
 

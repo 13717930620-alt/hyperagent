@@ -214,7 +214,7 @@ class ToolExecutor {
         try {
             const ExtendedTools = require('./ExtendedTools');
             Object.assign(this.toolRegistry, ExtendedTools);
-        } catch (e) {}
+        } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
     }
 
     _buildRegistry() {
@@ -293,7 +293,7 @@ class ToolExecutor {
                             });
                     });
                 } finally {
-                    try { fs.unlinkSync(tmpFile); } catch (e) {}
+                    try { fs.unlinkSync(tmpFile); } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
                 }
             },
             exec_powershell: async (params) => {
@@ -303,7 +303,7 @@ class ToolExecutor {
                     exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`,
                         { encoding: 'utf8', timeout: params.timeout || 60000 },
                         (error, stdout) => {
-                            try { fs.unlinkSync(tmpFile); } catch (e) {}
+                            try { fs.unlinkSync(tmpFile); } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
                             if (error) resolve({ verified: false, error: error.message });
                             else resolve({ verified: true, data: { output: stdout.trim() } });
                         });
@@ -572,7 +572,7 @@ class ToolExecutor {
                                     jsFiles.push(full);
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
                     };
                     walkDir(projectDir);
 

@@ -36,7 +36,7 @@ class SkillLibrary {
                     await fs.promises.readFile(path.join(this.storageDir, file), 'utf8')
                 );
                 this._skills.set(skill.name, skill);
-            } catch (e) {}
+            } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
         }
 
         this.stats.totalSkills = this._skills.size;
@@ -96,7 +96,7 @@ class SkillLibrary {
         if (this.vectorStore && typeof this.vectorStore.search === 'function') {
             try {
                 semanticResults = this.vectorStore.search(taskDescription, topK * 2);
-            } catch (e) {}
+            } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
         }
 
         // 2. 关键词匹配
@@ -227,7 +227,7 @@ class SkillLibrary {
         this._skills.delete(name);
         try {
             await fs.promises.unlink(path.join(this.storageDir, `skill_${name}.json`));
-        } catch (e) {}
+        } catch (e) { console.warn(`[orchestrator] Unhandled error: ${e.message}`); }
         this.stats.totalSkills = this._skills.size;
         return true;
     }

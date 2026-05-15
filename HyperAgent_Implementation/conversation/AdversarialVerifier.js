@@ -74,7 +74,7 @@ ${instructions ? `【指令要求】${instructions.substring(0, 500)}` : ''}
         try {
             const match = text.match(/\{[\s\S]*\}/);
             if (match) return JSON.parse(match[0]);
-        } catch (e) {}
+        } catch (e) { console.warn(`[conversation] Unhandled error: ${e.message}`); }
 
         return { passed: true, issues: [], score: 0.8, summary: 'Parse fallback: assumed passed' };
     }

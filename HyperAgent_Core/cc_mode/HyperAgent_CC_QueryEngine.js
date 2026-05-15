@@ -204,7 +204,7 @@ class QueryEngine {
           if (parsed._type === 'image_data' && parsed.base64) {
             imageData = parsed;
           }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cc_mode] Unhandled error: ${e.message}`); }
 
         if (imageData) {
           // tool_result 中包含完整的文本分析（OCR + 元数据），供所有模型使用
@@ -582,7 +582,7 @@ class QueryEngine {
       if (this.memoryPipeline) {
         try {
           memoryContext = await this.memoryPipeline.buildContext(userMessage, { topK: 5 });
-        } catch (e) {}
+        } catch (e) { console.warn(`[cc_mode] Unhandled error: ${e.message}`); }
       }
 
       const tools = this.toolRegistry.getToolSchemasForAPI();

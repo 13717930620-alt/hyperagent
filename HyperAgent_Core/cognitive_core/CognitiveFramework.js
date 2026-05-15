@@ -784,7 +784,7 @@ class CognitiveFramework {
                     this.deviceManager.getDeviceStats ?
                         this.deviceManager.getDeviceStats() : {};
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[cognitive_core] Unhandled error: ${e.message}`); }
         return {};
     }
 

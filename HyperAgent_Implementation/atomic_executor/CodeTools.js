@@ -389,7 +389,7 @@ class LSPClient {
         try {
             this._sendNotification(server, 'exit', {});
             server.process.kill();
-        } catch (e) {}
+        } catch (e) { console.warn(`[atomic_executor] Unhandled error: ${e.message}`); }
 
         this._servers.delete(language);
         console.log(`[LSP] ${language} 服务器已关闭`);
@@ -397,7 +397,7 @@ class LSPClient {
 
     stopAll() {
         for (const [lang] of this._servers) {
-            this.stopServer(lang).catch(() => {});
+            this.stopServer(lang).catch(e => console.warn(`[atomic_executor] Caught: ${e.message}`));
         }
     }
 

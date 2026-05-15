@@ -296,7 +296,7 @@ class MemoryBlocks {
             if (fs.existsSync(filePath)) {
                 return JSON.parse(await fs.promises.readFile(filePath, 'utf8'));
             }
-        } catch (e) {}
+        } catch (e) { console.warn(`[memory_engine] Unhandled error: ${e.message}`); }
         return null;
     }
 }
